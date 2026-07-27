@@ -101,7 +101,14 @@ export default async function DashboardPage({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <KpiCard label="Today's Income" value={data.today.income} icon={<Sun />} accent="primary" index={8} />
         <KpiCard label="Today's Expenses" value={data.today.expenses} icon={<CalendarDays />} accent="destructive" index={9} />
-        <KpiCard label="Avg. Daily Spending" value={m.averageDaily} icon={<Gauge />} accent="muted" index={10} />
+        <KpiCard
+          label="Median Daily Spending"
+          value={m.medianDailyVariable}
+          icon={<Gauge />}
+          accent="muted"
+          hint="Variable expenses only"
+          index={10}
+        />
       </div>
 
       {/* Charts + ring */}

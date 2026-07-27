@@ -3,6 +3,15 @@ import { prisma } from "@/lib/prisma";
 import { dayRange, monthRange, yearRange, monthName } from "@/lib/utils";
 import { generateRecurringForMonth } from "@/lib/recurring";
 
+/** Median of a numeric list (0 for empty). */
+function median(nums: number[]): number {
+  if (nums.length === 0) return 0;
+  const sorted = [...nums].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const value = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  return Number(value.toFixed(2));
+}
+
 export interface DashboardData {
   today: { income: number; expenses: number };
   month: {
@@ -15,7 +24,7 @@ export interface DashboardData {
     budget: number;
     savingGoal: number;
     utilization: number;
-    averageDaily: number;
+    medianDailyVariable: number;
     biggestExpense: { amount: number; description: string } | null;
   };
   recentExpenses: RecentTx[];
@@ -134,7 +143,11 @@ export async function getDashboardData(
     }),
     prisma.expense.findMany({
       where: { date: { gte: mStart, lt: mEnd } },
-      select: { amount: true, date: true },
+      select: {
+        amount: true,
+        date: true,
+        subcategory: { select: { category: { select: { type: true } } } },
+      },
     }),
   ]);
 
@@ -144,10 +157,21 @@ export async function getDashboardData(
   const savings = monthIncome - monthExpenses;
   const utilization = monthlyBudget > 0 ? (monthExpenses / monthlyBudget) * 100 : 0;
 
-  // Average over days elapsed (current month) or all days in a past/future month.
+  // Median daily *variable* spending (excludes fixed expenses; robust to
+  // one-off spikes). Computed over days elapsed (current month) or all days
+  // of a past/future month, counting no-spend days as 0.
   const daysInMonth = new Date(year, month, 0).getDate();
   const daysElapsed = isCurrentMonth ? Math.max(1, now.getDate()) : daysInMonth;
-  const averageDaily = monthExpenses / daysElapsed;
+
+  const variableByDay = new Map<number, number>();
+  for (const row of monthExpenseRows) {
+    if (row.subcategory.category.type !== "Variable") continue;
+    const day = row.date.getDate();
+    variableByDay.set(day, (variableByDay.get(day) ?? 0) + row.amount);
+  }
+  const dailyVariableTotals: number[] = [];
+  for (let d = 1; d <= daysElapsed; d++) dailyVariableTotals.push(variableByDay.get(d) ?? 0);
+  const medianDailyVariable = median(dailyVariableTotals);
 
   // Category breakdown + top categories
   const subIds = grouped.map((g) => g.subcategoryId);
@@ -202,7 +226,7 @@ export async function getDashboardData(
       budget: monthlyBudget,
       savingGoal,
       utilization,
-      averageDaily,
+      medianDailyVariable,
       biggestExpense: biggest
         ? { amount: biggest.amount, description: biggest.description }
         : null,
