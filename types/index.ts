@@ -9,6 +9,7 @@ import type {
   Account,
   AccountType,
   Transfer,
+  CategoryBudget,
 } from "@prisma/client";
 
 export type {
@@ -22,7 +23,11 @@ export type {
   Account,
   AccountType,
   Transfer,
+  CategoryBudget,
 };
+
+export type { WeeklyStatus } from "@/lib/weekly";
+export type { CategoryBudgetComparison, CategoryBudgetRow } from "@/lib/category-budget";
 
 export type CategoryWithSubs = Category & { subcategories: Subcategory[] };
 

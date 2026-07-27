@@ -85,14 +85,28 @@ model Expense {
 }
 
 model Category {
-  id            String        @id @default(cuid())
-  name          String
-  type          CategoryType
-  position      Int           @default(0)
-  createdAt     DateTime      @default(now())
-  subcategories Subcategory[]
+  id              String           @id @default(cuid())
+  name            String
+  type            CategoryType
+  position        Int              @default(0)
+  createdAt       DateTime         @default(now())
+  subcategories   Subcategory[]
+  categoryBudgets CategoryBudget[]
 
   @@index([type])
+}
+
+model CategoryBudget {
+  id         String   @id @default(cuid())
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  month      Int
+  year       Int
+  amount     Float
+  createdAt  DateTime @default(now())
+
+  @@unique([categoryId, month, year])
+  @@index([categoryId])
 }
 
 model Subcategory {

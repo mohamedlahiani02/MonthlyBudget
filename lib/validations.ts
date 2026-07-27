@@ -76,6 +76,19 @@ export type TransferInput = z.infer<typeof transferSchema>;
 
 export const ACCOUNT_TYPES = ["Caisse", "Banque", "Autre"] as const;
 
+export const weeklyCapSchema = z.object({
+  cap: z.coerce.number().min(0).nullable(),
+});
+export type WeeklyCapInput = z.infer<typeof weeklyCapSchema>;
+
+export const categoryBudgetSchema = z.object({
+  categoryId: idString,
+  month: z.coerce.number().int().min(1).max(12),
+  year: z.coerce.number().int().min(2000).max(3000),
+  amount: z.coerce.number().min(0),
+});
+export type CategoryBudgetInput = z.infer<typeof categoryBudgetSchema>;
+
 export const reorderSchema = z.object({
   ids: z.array(idString).min(1),
 });

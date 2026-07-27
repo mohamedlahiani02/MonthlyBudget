@@ -12,9 +12,13 @@ import {
 } from "lucide-react";
 import { getDashboardData } from "@/lib/finance";
 import { getAccountsWithBalances } from "@/lib/accounts";
+import { getWeeklyStatus } from "@/lib/weekly";
+import { getCategoryBudgetComparison } from "@/lib/category-budget";
 import { monthName } from "@/lib/utils";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { AccountsWidget } from "@/components/dashboard/accounts-widget";
+import { WeeklyCapWidget } from "@/components/dashboard/weekly-cap-widget";
+import { CategoryBudgetWidget } from "@/components/dashboard/category-budget-widget";
 import { BudgetRing } from "@/components/dashboard/budget-ring";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
 import { TopCategories } from "@/components/dashboard/top-categories";
@@ -41,9 +45,11 @@ export default async function DashboardPage({
   const year = yearParam ? parseInt(yearParam, 10) : now.getFullYear();
   const month = monthParam ? parseInt(monthParam, 10) : now.getMonth() + 1;
 
-  const [data, accounts] = await Promise.all([
+  const [data, accounts, weekly, categoryBudgets] = await Promise.all([
     getDashboardData(year, month, now),
     getAccountsWithBalances(),
+    getWeeklyStatus(now),
+    getCategoryBudgetComparison(year, month),
   ]);
   const m = data.month;
   const netWorth = accounts.filter((a) => a.isActive).reduce((s, a) => s + a.balance, 0);
@@ -130,6 +136,28 @@ export default async function DashboardPage({
           </CardHeader>
           <CardContent>
             <BudgetRing utilization={m.utilization} spent={m.expenses} budget={m.budget} />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Weekly Spending Cap</CardTitle>
+            <CardDescription>Variable spend vs your weekly limit</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <WeeklyCapWidget status={weekly} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Category Budgets</CardTitle>
+            <CardDescription>Budgeted vs spent this month</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CategoryBudgetWidget rows={categoryBudgets.budgeted} totals={categoryBudgets.totals} />
           </CardContent>
         </Card>
       </div>

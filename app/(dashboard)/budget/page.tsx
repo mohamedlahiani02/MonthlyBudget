@@ -19,6 +19,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { BudgetRing } from "@/components/dashboard/budget-ring";
+import { WeeklyCapSection } from "@/components/budget/weekly-cap-section";
+import { CategoryBudgetsSection } from "@/components/budget/category-budgets-section";
 import {
   Select,
   SelectContent,
@@ -185,6 +187,10 @@ export default function BudgetPage() {
           </CardContent>
         </Card>
       </div>
+
+      <WeeklyCapSection />
+
+      <CategoryBudgetsSection month={month} year={year} />
     </div>
   );
 }
