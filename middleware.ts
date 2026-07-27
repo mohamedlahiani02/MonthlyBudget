@@ -32,5 +32,9 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|.*\\.png$).*)"],
+  matcher: [
+    // Protect everything except Next internals, the service worker, and static
+    // icon/manifest assets (needed for PWA install & to load without a session).
+    "/((?!_next/static|_next/image|favicon.ico|sw.js|.*\\.(?:png|svg|ico|webmanifest)$).*)",
+  ],
 };
