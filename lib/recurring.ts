@@ -41,6 +41,7 @@ export async function generateRecurringForMonth(year: number, month: number): Pr
         date,
         paymentMethod: "Recurring",
         subcategoryId: r.subcategoryId,
+        accountId: r.accountId,
       },
     });
     created++;

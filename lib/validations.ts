@@ -6,6 +6,7 @@ export const incomeSchema = z.object({
   amount: z.coerce.number().positive("Amount must be greater than 0"),
   description: z.string().min(1, "Description is required").max(200),
   date: z.coerce.date(),
+  accountId: idString,
 });
 export type IncomeInput = z.infer<typeof incomeSchema>;
 
@@ -15,6 +16,7 @@ export const expenseSchema = z.object({
   date: z.coerce.date(),
   paymentMethod: z.string().min(1, "Payment method is required").max(50),
   subcategoryId: idString,
+  accountId: idString,
 });
 export type ExpenseInput = z.infer<typeof expenseSchema>;
 
@@ -43,9 +45,36 @@ export const recurringExpenseSchema = z.object({
   description: z.string().max(200).default(""),
   dayOfMonth: z.coerce.number().int().min(1).max(28),
   subcategoryId: idString,
+  accountId: idString,
   active: z.coerce.boolean().default(true),
 });
 export type RecurringExpenseInput = z.infer<typeof recurringExpenseSchema>;
+
+export const accountSchema = z.object({
+  label: z.string().min(1, "Label is required").max(80),
+  type: z.enum(["Caisse", "Banque", "Autre"]),
+  bankName: z.string().max(80).optional().nullable(),
+  openingBalance: z.coerce.number().default(0),
+  isDefault: z.coerce.boolean().default(false),
+  isActive: z.coerce.boolean().default(true),
+});
+export type AccountInput = z.infer<typeof accountSchema>;
+
+export const transferSchema = z
+  .object({
+    amount: z.coerce.number().positive("Amount must be greater than 0"),
+    description: z.string().max(200).default(""),
+    date: z.coerce.date(),
+    fromAccountId: idString,
+    toAccountId: idString,
+  })
+  .refine((d) => d.fromAccountId !== d.toAccountId, {
+    message: "Source and destination must differ",
+    path: ["toAccountId"],
+  });
+export type TransferInput = z.infer<typeof transferSchema>;
+
+export const ACCOUNT_TYPES = ["Caisse", "Banque", "Autre"] as const;
 
 export const reorderSchema = z.object({
   ids: z.array(idString).min(1),

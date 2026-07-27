@@ -35,12 +35,26 @@ async function main() {
   console.log("🌱 Seeding database...");
 
   // Clean slate
+  await prisma.transfer.deleteMany();
   await prisma.expense.deleteMany();
   await prisma.recurringExpense.deleteMany();
   await prisma.subcategory.deleteMany();
   await prisma.category.deleteMany();
   await prisma.income.deleteMany();
   await prisma.budget.deleteMany();
+  await prisma.account.deleteMany();
+
+  // Accounts
+  const cash = await prisma.account.create({
+    data: { label: "Caisse principale", type: "Caisse", openingBalance: 2500, isDefault: true, position: 0 },
+  });
+  const biat = await prisma.account.create({
+    data: { label: "Compte BIAT courant", type: "Banque", bankName: "BIAT", openingBalance: 45000, position: 1 },
+  });
+  const attijari = await prisma.account.create({
+    data: { label: "Compte Attijari épargne", type: "Banque", bankName: "Attijari Bank", openingBalance: 12000, position: 2 },
+  });
+  const spendingAccounts = [cash.id, biat.id];
 
   // Categories + subcategories
   const subIdByName = new Map<string, string>();
@@ -83,6 +97,7 @@ async function main() {
         description: r.desc,
         dayOfMonth: r.day,
         subcategoryId: subId,
+        accountId: cash.id,
         active: true,
       },
     });
@@ -117,12 +132,13 @@ async function main() {
       data: { month: m, year: y, monthlyBudget: 2500, savingGoal: 600 },
     });
 
-    // Income (salary + occasional freelance)
+    // Income (salary + occasional freelance) — salary lands in the bank
     await prisma.income.create({
       data: {
         amount: 3200,
         description: "Monthly salary",
         date: new Date(y, m - 1, 1, 9, 0, 0),
+        accountId: biat.id,
       },
     });
     if (Math.random() > 0.5) {
@@ -131,11 +147,12 @@ async function main() {
           amount: randomAmount(200, 700),
           description: "Freelance project",
           date: new Date(y, m - 1, Math.min(20, maxDay), 12, 0, 0),
+          accountId: cash.id,
         },
       });
     }
 
-    // Fixed recurring expenses materialised for the month
+    // Fixed recurring expenses materialised for the month (paid from bank)
     for (const r of recurringDefs) {
       const subId = subIdByName.get(r.key);
       if (!subId) continue;
@@ -148,6 +165,7 @@ async function main() {
           date: new Date(y, m - 1, day, 12, 0, 0),
           paymentMethod: "Bank Transfer",
           subcategoryId: subId,
+          accountId: cash.id,
         },
       });
     }
@@ -166,18 +184,41 @@ async function main() {
           date: new Date(y, m - 1, day, 14, 0, 0),
           paymentMethod: pick(PAYMENT_METHODS),
           subcategoryId: subId,
+          accountId: pick(spendingAccounts),
         },
       });
     }
   }
 
+  // A couple of sample transfers between accounts
+  await prisma.transfer.create({
+    data: {
+      amount: 1000,
+      description: "Cash withdrawal",
+      date: new Date(year, now.getMonth(), 3, 10, 0, 0),
+      fromAccountId: biat.id,
+      toAccountId: cash.id,
+    },
+  });
+  await prisma.transfer.create({
+    data: {
+      amount: 2000,
+      description: "Monthly saving",
+      date: new Date(year, now.getMonth(), 2, 10, 0, 0),
+      fromAccountId: biat.id,
+      toAccountId: attijari.id,
+    },
+  });
+
   const counts = {
+    accounts: await prisma.account.count(),
     categories: await prisma.category.count(),
     subcategories: await prisma.subcategory.count(),
     expenses: await prisma.expense.count(),
     income: await prisma.income.count(),
     budgets: await prisma.budget.count(),
     recurring: await prisma.recurringExpense.count(),
+    transfers: await prisma.transfer.count(),
   };
   console.log("✅ Seed complete:", counts);
 }

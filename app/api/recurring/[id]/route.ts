@@ -9,7 +9,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const item = await prisma.recurringExpense.update({
       where: { id },
       data,
-      include: { subcategory: { include: { category: true } } },
+      include: { subcategory: { include: { category: true } }, account: true },
     });
     return ok(item);
   } catch (err) {

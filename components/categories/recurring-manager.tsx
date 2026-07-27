@@ -8,6 +8,7 @@ import { recurringExpenseSchema, type RecurringExpenseInput } from "@/lib/valida
 import { api } from "@/lib/client-api";
 import { formatCurrency } from "@/lib/utils";
 import { useCategories } from "@/hooks/use-categories";
+import { useAccounts } from "@/hooks/use-accounts";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,15 +31,28 @@ import type { RecurringWithCategory } from "@/types";
 export function RecurringManager() {
   const { toast } = useToast();
   const { categories } = useCategories();
+  const { accounts, defaultAccount } = useAccounts();
   const [items, setItems] = React.useState<RecurringWithCategory[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
-  const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } =
+  const { register, handleSubmit, control, reset, setValue, watch, formState: { errors, isSubmitting } } =
     useForm<RecurringExpenseInput>({
       resolver: zodResolver(recurringExpenseSchema),
-      defaultValues: { amount: undefined, description: "", dayOfMonth: 1, subcategoryId: "", active: true },
+      defaultValues: {
+        amount: undefined,
+        description: "",
+        dayOfMonth: 1,
+        subcategoryId: "",
+        accountId: "",
+        active: true,
+      },
     });
+
+  const accountId = watch("accountId");
+  React.useEffect(() => {
+    if (!accountId && defaultAccount) setValue("accountId", defaultAccount.id);
+  }, [accountId, defaultAccount, setValue]);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -57,7 +71,14 @@ export function RecurringManager() {
     try {
       await api.post("/api/recurring", values);
       toast({ title: "Recurring expense added", variant: "success" });
-      reset({ amount: undefined, description: "", dayOfMonth: 1, subcategoryId: "", active: true });
+      reset({
+        amount: undefined,
+        description: "",
+        dayOfMonth: 1,
+        subcategoryId: "",
+        accountId: defaultAccount?.id ?? "",
+        active: true,
+      });
       load();
     } catch (err) {
       toast({ title: "Failed", description: (err as Error).message, variant: "destructive" });
@@ -89,7 +110,7 @@ export function RecurringManager() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
-        <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 gap-3 sm:grid-cols-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 gap-3 sm:grid-cols-6">
           <div className="space-y-1.5">
             <Label htmlFor="r-amount">Amount</Label>
             <Input id="r-amount" type="number" step="0.01" placeholder="180" {...register("amount")} />
@@ -128,8 +149,31 @@ export function RecurringManager() {
               )}
             />
           </div>
-          <div className="sm:col-span-5">
-            {errors.subcategoryId && <p className="mb-2 text-xs text-destructive">Choose a subcategory</p>}
+          <div className="space-y-1.5">
+            <Label>Account</Label>
+            <Controller
+              control={control}
+              name="accountId"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {accounts.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
+          <div className="sm:col-span-6">
+            {(errors.subcategoryId || errors.accountId) && (
+              <p className="mb-2 text-xs text-destructive">Choose a subcategory and an account</p>
+            )}
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Add recurring
             </Button>

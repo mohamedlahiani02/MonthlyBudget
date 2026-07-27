@@ -10,12 +10,14 @@ import {
   BarChart3,
   Settings,
   Wallet2,
+  Landmark,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
+  { href: "/accounts", label: "Accounts", icon: Landmark },
   { href: "/budget", label: "Budget", icon: Wallet },
   { href: "/categories", label: "Categories", icon: FolderTree },
   { href: "/reports", label: "Reports", icon: BarChart3 },

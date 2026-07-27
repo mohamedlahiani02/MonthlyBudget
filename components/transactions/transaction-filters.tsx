@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { PAYMENT_METHODS } from "@/lib/validations";
 import { MONTH_NAMES } from "@/lib/utils";
+import { useAccounts } from "@/hooks/use-accounts";
 import type { CategoryWithSubs } from "@/types";
 
 export interface Filters {
@@ -18,6 +19,7 @@ export interface Filters {
   categoryId: string;
   subcategoryId: string;
   paymentMethod: string;
+  accountId: string;
   month: string;
   year: string;
 }
@@ -31,12 +33,13 @@ interface Props {
 const ALL = "all";
 
 export function TransactionFilters({ filters, onChange, categories }: Props) {
+  const { accounts } = useAccounts();
   const set = (patch: Partial<Filters>) => onChange({ ...filters, ...patch });
   const selectedCat = categories.find((c) => c.id === filters.categoryId);
   const years = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i);
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-7">
       <div className="relative col-span-2 md:col-span-3 lg:col-span-2">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -94,6 +97,23 @@ export function TransactionFilters({ filters, onChange, categories }: Props) {
           {PAYMENT_METHODS.map((m) => (
             <SelectItem key={m} value={m}>
               {m}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select
+        value={filters.accountId || ALL}
+        onValueChange={(v) => set({ accountId: v === ALL ? "" : v })}
+      >
+        <SelectTrigger>
+          <SelectValue placeholder="Account" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL}>All accounts</SelectItem>
+          {accounts.map((a) => (
+            <SelectItem key={a.id} value={a.id}>
+              {a.label}
             </SelectItem>
           ))}
         </SelectContent>

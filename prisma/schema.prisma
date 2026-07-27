@@ -15,14 +15,56 @@ enum CategoryType {
   Variable
 }
 
+enum AccountType {
+  Caisse
+  Banque
+  Autre
+}
+
+model Account {
+  id             String             @id @default(cuid())
+  label          String
+  type           AccountType
+  bankName       String?
+  openingBalance Float              @default(0)
+  isDefault      Boolean            @default(false)
+  isActive       Boolean            @default(true)
+  position       Int                @default(0)
+  createdAt      DateTime           @default(now())
+  expenses       Expense[]
+  incomes        Income[]
+  recurring      RecurringExpense[]
+  transfersFrom  Transfer[]         @relation("TransferFrom")
+  transfersTo    Transfer[]         @relation("TransferTo")
+}
+
+model Transfer {
+  id            String   @id @default(cuid())
+  amount        Float
+  description   String   @default("")
+  date          DateTime
+  fromAccountId String
+  fromAccount   Account  @relation("TransferFrom", fields: [fromAccountId], references: [id], onDelete: Restrict)
+  toAccountId   String
+  toAccount     Account  @relation("TransferTo", fields: [toAccountId], references: [id], onDelete: Restrict)
+  createdAt     DateTime @default(now())
+
+  @@index([date])
+  @@index([fromAccountId])
+  @@index([toAccountId])
+}
+
 model Income {
   id          String   @id @default(cuid())
   amount      Float
   description String
   date        DateTime
+  accountId   String?
+  account     Account? @relation(fields: [accountId], references: [id], onDelete: Restrict)
   createdAt   DateTime @default(now())
 
   @@index([date])
+  @@index([accountId])
 }
 
 model Expense {
@@ -33,10 +75,13 @@ model Expense {
   paymentMethod String
   subcategoryId String
   subcategory   Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+  accountId     String?
+  account       Account?    @relation(fields: [accountId], references: [id], onDelete: Restrict)
   createdAt     DateTime    @default(now())
 
   @@index([date])
   @@index([subcategoryId])
+  @@index([accountId])
 }
 
 model Category {
@@ -81,10 +126,13 @@ model RecurringExpense {
   dayOfMonth    Int         @default(1)
   subcategoryId String
   subcategory   Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+  accountId     String?
+  account       Account?    @relation(fields: [accountId], references: [id], onDelete: Restrict)
   active        Boolean     @default(true)
   createdAt     DateTime    @default(now())
 
   @@index([subcategoryId])
+  @@index([accountId])
 }
 
 // Simple key/value store (used for the runtime password override).

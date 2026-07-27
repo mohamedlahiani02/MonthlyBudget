@@ -29,6 +29,7 @@ const EMPTY_FILTERS: Filters = {
   categoryId: "",
   subcategoryId: "",
   paymentMethod: "",
+  accountId: "",
   month: "",
   year: "",
 };
@@ -87,6 +88,7 @@ function ExpensesTab({
       if (filters.categoryId) params.set("categoryId", filters.categoryId);
       if (filters.subcategoryId) params.set("subcategoryId", filters.subcategoryId);
       if (filters.paymentMethod) params.set("paymentMethod", filters.paymentMethod);
+      if (filters.accountId) params.set("accountId", filters.accountId);
       if (filters.year) params.set("year", filters.year);
       if (filters.month) params.set("month", filters.month);
       const data = await api.get<ExpenseWithCategory[]>(`/api/expenses?${params.toString()}`);

@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { expenseSchema, type ExpenseInput, PAYMENT_METHODS } from "@/lib/validations";
 import { api } from "@/lib/client-api";
 import { useCategories } from "@/hooks/use-categories";
+import { useAccounts } from "@/hooks/use-accounts";
 import { toDateInputValue } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,11 +33,14 @@ interface ExpenseFormProps {
 export function ExpenseForm({ expense, onSaved, onCancel }: ExpenseFormProps) {
   const { toast } = useToast();
   const { categories, loading } = useCategories();
+  const { accounts, defaultAccount } = useAccounts();
 
   const {
     register,
     handleSubmit,
     control,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<ExpenseInput>({
     resolver: zodResolver(expenseSchema),
@@ -46,8 +50,15 @@ export function ExpenseForm({ expense, onSaved, onCancel }: ExpenseFormProps) {
       date: expense ? new Date(expense.date) : new Date(),
       paymentMethod: expense?.paymentMethod ?? "Card",
       subcategoryId: expense?.subcategoryId ?? "",
+      accountId: expense?.accountId ?? "",
     },
   });
+
+  // Pre-select the default account when creating a new expense.
+  const accountId = watch("accountId");
+  React.useEffect(() => {
+    if (!accountId && defaultAccount) setValue("accountId", defaultAccount.id);
+  }, [accountId, defaultAccount, setValue]);
 
   async function onSubmit(values: ExpenseInput) {
     try {
@@ -162,6 +173,30 @@ export function ExpenseForm({ expense, onSaved, onCancel }: ExpenseFormProps) {
             )}
           />
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Account</Label>
+        <Controller
+          control={control}
+          name="accountId"
+          render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select account" />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.label}
+                    {a.bankName ? ` · ${a.bankName}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
+        {errors.accountId && <p className="text-xs text-destructive">Please choose an account</p>}
       </div>
 
       <div className="flex justify-end gap-2 pt-2">

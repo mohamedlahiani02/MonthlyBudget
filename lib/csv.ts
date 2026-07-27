@@ -11,7 +11,7 @@ function escapeCsv(value: string | number): string {
 export async function exportExpensesCsv(): Promise<string> {
   const expenses = await prisma.expense.findMany({
     orderBy: { date: "desc" },
-    include: { subcategory: { include: { category: true } } },
+    include: { subcategory: { include: { category: true } }, account: true },
   });
   const header = [
     "date",
@@ -21,6 +21,7 @@ export async function exportExpensesCsv(): Promise<string> {
     "category",
     "categoryType",
     "subcategory",
+    "account",
   ];
   const rows = expenses.map((e) =>
     [
@@ -31,6 +32,7 @@ export async function exportExpensesCsv(): Promise<string> {
       e.subcategory.category.name,
       e.subcategory.category.type,
       e.subcategory.name,
+      e.account?.label ?? "",
     ]
       .map(escapeCsv)
       .join(",")
@@ -103,6 +105,7 @@ export async function importExpensesCsv(text: string): Promise<ImportResult> {
   const iCat = idx("category");
   const iType = idx("categorytype");
   const iSub = idx("subcategory");
+  const iAccount = idx("account");
 
   if (iDate < 0 || iAmount < 0 || iCat < 0 || iSub < 0) {
     return {
@@ -111,6 +114,17 @@ export async function importExpensesCsv(text: string): Promise<ImportResult> {
       errors: ["CSV must contain at least: date, amount, category, subcategory"],
     };
   }
+
+  // Resolve the account to use as a fallback (default or first, creating one if none).
+  let fallbackAccount =
+    (await prisma.account.findFirst({ where: { isDefault: true } })) ??
+    (await prisma.account.findFirst({ orderBy: { position: "asc" } }));
+  if (!fallbackAccount) {
+    fallbackAccount = await prisma.account.create({
+      data: { label: "Caisse principale", type: "Caisse", isDefault: true, position: 0 },
+    });
+  }
+  const accountByLabel = new Map<string, string>();
 
   const result: ImportResult = { imported: 0, skipped: 0, errors: [] };
 
@@ -145,6 +159,26 @@ export async function importExpensesCsv(text: string): Promise<ImportResult> {
         });
       }
 
+      // Resolve account (by label) — else fall back to the default account.
+      let accountId = fallbackAccount.id;
+      const accLabel = iAccount >= 0 ? (cols[iAccount] ?? "").trim() : "";
+      if (accLabel) {
+        const cached = accountByLabel.get(accLabel);
+        if (cached) {
+          accountId = cached;
+        } else {
+          let acc = await prisma.account.findFirst({ where: { label: accLabel } });
+          if (!acc) {
+            const count = await prisma.account.count();
+            acc = await prisma.account.create({
+              data: { label: accLabel, type: "Caisse", position: count },
+            });
+          }
+          accountByLabel.set(accLabel, acc.id);
+          accountId = acc.id;
+        }
+      }
+
       await prisma.expense.create({
         data: {
           amount,
@@ -152,6 +186,7 @@ export async function importExpensesCsv(text: string): Promise<ImportResult> {
           date,
           paymentMethod: (cols[iPay] ?? "").trim() || "Other",
           subcategoryId: subcategory.id,
+          accountId,
         },
       });
       result.imported++;
@@ -166,16 +201,29 @@ export async function importExpensesCsv(text: string): Promise<ImportResult> {
 
 /** Full database dump as a JSON string. */
 export async function exportDatabaseJson(): Promise<string> {
-  const [categories, subcategories, expenses, incomes, budgets, recurring] = await Promise.all([
-    prisma.category.findMany(),
-    prisma.subcategory.findMany(),
-    prisma.expense.findMany(),
-    prisma.income.findMany(),
-    prisma.budget.findMany(),
-    prisma.recurringExpense.findMany(),
-  ]);
+  const [accounts, transfers, categories, subcategories, expenses, incomes, budgets, recurring] =
+    await Promise.all([
+      prisma.account.findMany(),
+      prisma.transfer.findMany(),
+      prisma.category.findMany(),
+      prisma.subcategory.findMany(),
+      prisma.expense.findMany(),
+      prisma.income.findMany(),
+      prisma.budget.findMany(),
+      prisma.recurringExpense.findMany(),
+    ]);
   return JSON.stringify(
-    { exportedAt: new Date().toISOString(), categories, subcategories, expenses, incomes, budgets, recurring },
+    {
+      exportedAt: new Date().toISOString(),
+      accounts,
+      transfers,
+      categories,
+      subcategories,
+      expenses,
+      incomes,
+      budgets,
+      recurring,
+    },
     null,
     2
   );

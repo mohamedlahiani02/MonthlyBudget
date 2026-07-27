@@ -6,7 +6,7 @@ export async function GET() {
   try {
     const items = await prisma.recurringExpense.findMany({
       orderBy: { createdAt: "desc" },
-      include: { subcategory: { include: { category: true } } },
+      include: { subcategory: { include: { category: true } }, account: true },
     });
     return ok(items);
   } catch (err) {
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     const data = recurringExpenseSchema.parse(await req.json());
     const item = await prisma.recurringExpense.create({
       data,
-      include: { subcategory: { include: { category: true } } },
+      include: { subcategory: { include: { category: true } }, account: true },
     });
     return ok(item, 201);
   } catch (err) {

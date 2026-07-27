@@ -7,7 +7,9 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const year = searchParams.get("year");
     const month = searchParams.get("month");
-    const where: { date?: { gte: Date; lt: Date } } = {};
+    const accountId = searchParams.get("accountId");
+    const where: { date?: { gte: Date; lt: Date }; accountId?: string } = {};
+    if (accountId) where.accountId = accountId;
     if (year) {
       const y = parseInt(year, 10);
       if (month) {
@@ -17,7 +19,11 @@ export async function GET(req: Request) {
         where.date = { gte: new Date(y, 0, 1), lt: new Date(y + 1, 0, 1) };
       }
     }
-    const income = await prisma.income.findMany({ where, orderBy: { date: "desc" } });
+    const income = await prisma.income.findMany({
+      where,
+      orderBy: { date: "desc" },
+      include: { account: true },
+    });
     return ok(income);
   } catch (err) {
     return handleError(err);

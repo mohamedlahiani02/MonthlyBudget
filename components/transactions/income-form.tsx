@@ -6,25 +6,36 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { incomeSchema, type IncomeInput } from "@/lib/validations";
 import { api } from "@/lib/client-api";
+import { useAccounts } from "@/hooks/use-accounts";
 import { toDateInputValue } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import type { Income } from "@/types";
+import type { IncomeWithAccount } from "@/types";
 
 interface IncomeFormProps {
-  income?: Income | null;
+  income?: IncomeWithAccount | null;
   onSaved?: () => void;
   onCancel?: () => void;
 }
 
 export function IncomeForm({ income, onSaved, onCancel }: IncomeFormProps) {
   const { toast } = useToast();
+  const { accounts, defaultAccount } = useAccounts();
   const {
     register,
     handleSubmit,
     control,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<IncomeInput>({
     resolver: zodResolver(incomeSchema),
@@ -32,8 +43,14 @@ export function IncomeForm({ income, onSaved, onCancel }: IncomeFormProps) {
       amount: income?.amount ?? undefined,
       description: income?.description ?? "",
       date: income ? new Date(income.date) : new Date(),
+      accountId: income?.accountId ?? "",
     },
   });
+
+  const accountId = watch("accountId");
+  React.useEffect(() => {
+    if (!accountId && defaultAccount) setValue("accountId", defaultAccount.id);
+  }, [accountId, defaultAccount, setValue]);
 
   async function onSubmit(values: IncomeInput) {
     try {
@@ -86,6 +103,29 @@ export function IncomeForm({ income, onSaved, onCancel }: IncomeFormProps) {
         {errors.description && (
           <p className="text-xs text-destructive">{errors.description.message}</p>
         )}
+      </div>
+      <div className="space-y-2">
+        <Label>Account</Label>
+        <Controller
+          control={control}
+          name="accountId"
+          render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select account" />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.label}
+                    {a.bankName ? ` · ${a.bankName}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
+        {errors.accountId && <p className="text-xs text-destructive">Please choose an account</p>}
       </div>
       <div className="flex justify-end gap-2 pt-2">
         {onCancel && (

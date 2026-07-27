@@ -10,6 +10,7 @@ export async function GET(req: Request) {
     const categoryId = searchParams.get("categoryId");
     const subcategoryId = searchParams.get("subcategoryId");
     const paymentMethod = searchParams.get("paymentMethod");
+    const accountId = searchParams.get("accountId");
     const year = searchParams.get("year");
     const month = searchParams.get("month");
     const take = searchParams.get("take");
@@ -20,6 +21,7 @@ export async function GET(req: Request) {
     if (subcategoryId) where.subcategoryId = subcategoryId;
     else if (categoryId) where.subcategory = { categoryId };
     if (paymentMethod) where.paymentMethod = paymentMethod;
+    if (accountId) where.accountId = accountId;
 
     if (year) {
       const y = parseInt(year, 10);
@@ -35,7 +37,7 @@ export async function GET(req: Request) {
       where,
       orderBy: { date: "desc" },
       take: take ? parseInt(take, 10) : undefined,
-      include: { subcategory: { include: { category: true } } },
+      include: { subcategory: { include: { category: true } }, account: true },
     });
     return ok(expenses);
   } catch (err) {
@@ -48,7 +50,7 @@ export async function POST(req: Request) {
     const data = expenseSchema.parse(await req.json());
     const expense = await prisma.expense.create({
       data,
-      include: { subcategory: { include: { category: true } } },
+      include: { subcategory: { include: { category: true } }, account: true },
     });
     return ok(expense, 201);
   } catch (err) {

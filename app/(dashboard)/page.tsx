@@ -11,8 +11,10 @@ import {
   Sun,
 } from "lucide-react";
 import { getDashboardData } from "@/lib/finance";
+import { getAccountsWithBalances } from "@/lib/accounts";
 import { monthName } from "@/lib/utils";
 import { KpiCard } from "@/components/dashboard/kpi-card";
+import { AccountsWidget } from "@/components/dashboard/accounts-widget";
 import { BudgetRing } from "@/components/dashboard/budget-ring";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
 import { TopCategories } from "@/components/dashboard/top-categories";
@@ -39,8 +41,12 @@ export default async function DashboardPage({
   const year = yearParam ? parseInt(yearParam, 10) : now.getFullYear();
   const month = monthParam ? parseInt(monthParam, 10) : now.getMonth() + 1;
 
-  const data = await getDashboardData(year, month, now);
+  const [data, accounts] = await Promise.all([
+    getDashboardData(year, month, now),
+    getAccountsWithBalances(),
+  ]);
   const m = data.month;
+  const netWorth = accounts.filter((a) => a.isActive).reduce((s, a) => s + a.balance, 0);
 
   return (
     <div className="space-y-6">
@@ -122,6 +128,28 @@ export default async function DashboardPage({
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-1">
+          <CardHeader>
+            <CardTitle>Accounts</CardTitle>
+            <CardDescription>Balances & net worth</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AccountsWidget accounts={accounts} netWorth={netWorth} />
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Recent Transactions</CardTitle>
+            <CardDescription>Latest income and expenses this month</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RecentTransactions expenses={data.recentExpenses} income={data.recentIncome} />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>Spending by Category</CardTitle>
@@ -152,16 +180,6 @@ export default async function DashboardPage({
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Transactions</CardTitle>
-          <CardDescription>Latest income and expenses</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <RecentTransactions expenses={data.recentExpenses} income={data.recentIncome} />
-        </CardContent>
-      </Card>
     </div>
   );
 }
