@@ -17,6 +17,7 @@ import { BudgetRing } from "@/components/dashboard/budget-ring";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
 import { TopCategories } from "@/components/dashboard/top-categories";
 import { SpendingHeatmap } from "@/components/dashboard/spending-heatmap";
+import { PeriodSelect } from "@/components/dashboard/period-select";
 import {
   Card,
   CardContent,
@@ -28,18 +29,29 @@ import { LazyMonthlyBar, LazyCategoryPie } from "@/components/charts/lazy";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string; year?: string }>;
+}) {
   const now = new Date();
-  const data = await getDashboardData(now);
+  const { month: monthParam, year: yearParam } = await searchParams;
+  const year = yearParam ? parseInt(yearParam, 10) : now.getFullYear();
+  const month = monthParam ? parseInt(monthParam, 10) : now.getMonth() + 1;
+
+  const data = await getDashboardData(year, month, now);
   const m = data.month;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          {monthName(now.getMonth() + 1)} {now.getFullYear()} · your financial overview
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            {monthName(month)} {year} · your financial overview
+          </p>
+        </div>
+        <PeriodSelect month={month} year={year} />
       </div>
 
       {/* Top KPI grid */}
@@ -136,7 +148,7 @@ export default async function DashboardPage() {
             <CardDescription>Daily activity this month</CardDescription>
           </CardHeader>
           <CardContent>
-            <SpendingHeatmap year={now.getFullYear()} month={now.getMonth() + 1} data={data.heatmap} />
+            <SpendingHeatmap year={year} month={month} data={data.heatmap} />
           </CardContent>
         </Card>
       </div>

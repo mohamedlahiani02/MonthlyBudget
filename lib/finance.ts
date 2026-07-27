@@ -77,15 +77,21 @@ async function sumByType(start: Date, end: Date) {
   return { fixed, variable };
 }
 
-export async function getDashboardData(now = new Date()): Promise<DashboardData> {
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-
-  // Lazily materialise recurring expenses for the current month.
+export async function getDashboardData(
+  year: number,
+  month: number,
+  now = new Date()
+): Promise<DashboardData> {
+  // Lazily materialise recurring expenses for the viewed month.
   await generateRecurringForMonth(year, month);
 
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
+
   const { start: mStart, end: mEnd } = monthRange(year, month);
-  const { start: dStart, end: dEnd } = dayRange(now);
+  // "Today" only applies when viewing the actual current month.
+  const { start: dStart, end: dEnd } = isCurrentMonth
+    ? dayRange(now)
+    : { start: mEnd, end: mEnd }; // empty range -> zero
 
   const [
     todayIncome,
@@ -107,11 +113,16 @@ export async function getDashboardData(now = new Date()): Promise<DashboardData>
     sumByType(mStart, mEnd),
     prisma.budget.findUnique({ where: { month_year: { month, year } } }),
     prisma.expense.findMany({
+      where: { date: { gte: mStart, lt: mEnd } },
       orderBy: { date: "desc" },
       take: 6,
       include: { subcategory: { include: { category: true } } },
     }),
-    prisma.income.findMany({ orderBy: { date: "desc" }, take: 6 }),
+    prisma.income.findMany({
+      where: { date: { gte: mStart, lt: mEnd } },
+      orderBy: { date: "desc" },
+      take: 6,
+    }),
     prisma.expense.findFirst({
       where: { date: { gte: mStart, lt: mEnd } },
       orderBy: { amount: "desc" },
@@ -133,7 +144,9 @@ export async function getDashboardData(now = new Date()): Promise<DashboardData>
   const savings = monthIncome - monthExpenses;
   const utilization = monthlyBudget > 0 ? (monthExpenses / monthlyBudget) * 100 : 0;
 
-  const daysElapsed = Math.max(1, now.getDate());
+  // Average over days elapsed (current month) or all days in a past/future month.
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const daysElapsed = isCurrentMonth ? Math.max(1, now.getDate()) : daysInMonth;
   const averageDaily = monthExpenses / daysElapsed;
 
   // Category breakdown + top categories
