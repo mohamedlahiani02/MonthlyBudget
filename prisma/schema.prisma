@@ -1,0 +1,94 @@
+// Personal Finance Dashboard — Prisma schema
+// Provider is Postgres (free Neon tier) so data persists on Vercel.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CategoryType {
+  Fixed
+  Variable
+}
+
+model Income {
+  id          String   @id @default(cuid())
+  amount      Float
+  description String
+  date        DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([date])
+}
+
+model Expense {
+  id            String      @id @default(cuid())
+  amount        Float
+  description   String
+  date          DateTime
+  paymentMethod String
+  subcategoryId String
+  subcategory   Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@index([date])
+  @@index([subcategoryId])
+}
+
+model Category {
+  id            String        @id @default(cuid())
+  name          String
+  type          CategoryType
+  position      Int           @default(0)
+  createdAt     DateTime      @default(now())
+  subcategories Subcategory[]
+
+  @@index([type])
+}
+
+model Subcategory {
+  id                String             @id @default(cuid())
+  name              String
+  categoryId        String
+  category          Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  position          Int                @default(0)
+  createdAt         DateTime           @default(now())
+  expenses          Expense[]
+  recurringExpenses RecurringExpense[]
+
+  @@index([categoryId])
+}
+
+model Budget {
+  id            String   @id @default(cuid())
+  month         Int
+  year          Int
+  monthlyBudget Float
+  savingGoal    Float    @default(0)
+  createdAt     DateTime @default(now())
+
+  @@unique([month, year])
+}
+
+model RecurringExpense {
+  id            String      @id @default(cuid())
+  amount        Float
+  description   String      @default("")
+  dayOfMonth    Int         @default(1)
+  subcategoryId String
+  subcategory   Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+  active        Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+
+  @@index([subcategoryId])
+}
+
+// Simple key/value store (used for the runtime password override).
+model Setting {
+  key   String @id
+  value String
+}
