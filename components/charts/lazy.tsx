@@ -25,3 +25,7 @@ export const LazySpendingLine = dynamic(
   () => import("@/components/charts").then((m) => m.SpendingLine),
   { ssr: false, loading: () => fallback }
 );
+export const LazyBudgetVsActualBar = dynamic(
+  () => import("@/components/charts").then((m) => m.BudgetVsActualBar),
+  { ssr: false, loading: () => fallback }
+);

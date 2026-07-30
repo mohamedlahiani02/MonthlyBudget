@@ -13,7 +13,7 @@ import {
 import { getDashboardData } from "@/lib/finance";
 import { getAccountsWithBalances } from "@/lib/accounts";
 import { getWeeklyStatus } from "@/lib/weekly";
-import { getCategoryBudgetComparison } from "@/lib/category-budget";
+import { getBudgetComparison } from "@/lib/category-budget";
 import { monthName } from "@/lib/utils";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { AccountsWidget } from "@/components/dashboard/accounts-widget";
@@ -49,7 +49,7 @@ export default async function DashboardPage({
     getDashboardData(year, month, now),
     getAccountsWithBalances(),
     getWeeklyStatus(now),
-    getCategoryBudgetComparison(year, month),
+    getBudgetComparison(year, month),
   ]);
   const m = data.month;
   const netWorth = accounts.filter((a) => a.isActive).reduce((s, a) => s + a.balance, 0);
@@ -157,7 +157,10 @@ export default async function DashboardPage({
             <CardDescription>Budgeted vs spent this month</CardDescription>
           </CardHeader>
           <CardContent>
-            <CategoryBudgetWidget rows={categoryBudgets.budgeted} totals={categoryBudgets.totals} />
+            <CategoryBudgetWidget
+              rows={categoryBudgets.categories.filter((c) => c.budgeted > 0)}
+              totals={categoryBudgets.totals}
+            />
           </CardContent>
         </Card>
       </div>

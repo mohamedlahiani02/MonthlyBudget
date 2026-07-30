@@ -86,8 +86,26 @@ export const categoryBudgetSchema = z.object({
   month: z.coerce.number().int().min(1).max(12),
   year: z.coerce.number().int().min(2000).max(3000),
   amount: z.coerce.number().min(0),
+  rollover: z.coerce.boolean().optional(),
 });
 export type CategoryBudgetInput = z.infer<typeof categoryBudgetSchema>;
+
+export const subcategoryBudgetSchema = z.object({
+  subcategoryId: idString,
+  month: z.coerce.number().int().min(1).max(12),
+  year: z.coerce.number().int().min(2000).max(3000),
+  amount: z.coerce.number().min(0),
+  rollover: z.coerce.boolean().optional(),
+});
+export type SubcategoryBudgetInput = z.infer<typeof subcategoryBudgetSchema>;
+
+export const copyBudgetSchema = z.object({
+  fromMonth: z.coerce.number().int().min(1).max(12),
+  fromYear: z.coerce.number().int().min(2000).max(3000),
+  toMonth: z.coerce.number().int().min(1).max(12),
+  toYear: z.coerce.number().int().min(2000).max(3000),
+});
+export type CopyBudgetInput = z.infer<typeof copyBudgetSchema>;
 
 export const reorderSchema = z.object({
   ids: z.array(idString).min(1),

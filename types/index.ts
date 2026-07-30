@@ -27,7 +27,12 @@ export type {
 };
 
 export type { WeeklyStatus } from "@/lib/weekly";
-export type { CategoryBudgetComparison, CategoryBudgetRow } from "@/lib/category-budget";
+export type {
+  BudgetComparison,
+  BudgetCategoryNode,
+  EnvelopeNode,
+  BudgetTrendPoint,
+} from "@/lib/category-budget";
 
 export type CategoryWithSubs = Category & { subcategories: Subcategory[] };
 

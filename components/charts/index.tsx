@@ -110,6 +110,29 @@ export function MonthlyBar({ data }: { data: MonthlyPoint[] }) {
   );
 }
 
+export function BudgetVsActualBar({
+  data,
+}: {
+  data: { label: string; budgeted: number; spent: number }[];
+}) {
+  const total = data.reduce((s, d) => s + d.budgeted + d.spent, 0);
+  if (total <= 0)
+    return <EmptyState title="No data" description="Set category budgets to see the trend." />;
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <BarChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
+        <XAxis dataKey="label" tick={AXIS} axisLine={false} tickLine={false} />
+        <YAxis tick={AXIS} axisLine={false} tickLine={false} width={40} />
+        <Tooltip content={<TooltipBox />} cursor={{ fill: "hsl(217 33% 24% / 0.4)" }} />
+        <Legend wrapperStyle={{ fontSize: 12 }} />
+        <Bar dataKey="budgeted" name="Budgeted" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+        <Bar dataKey="spent" name="Spent" fill="#10b981" radius={[6, 6, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
 export function SavingsLine({ data }: { data: MonthlyPoint[] }) {
   return (
     <ResponsiveContainer width="100%" height={300}>

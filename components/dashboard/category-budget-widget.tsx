@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { AlertTriangle, Target } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { CategoryBudgetRow } from "@/types";
+import type { BudgetCategoryNode } from "@/types";
 
 const barColor = (status: string) =>
   status === "over" ? "bg-destructive" : status === "near" ? "bg-amber-500" : "bg-primary";
@@ -14,7 +14,7 @@ export function CategoryBudgetWidget({
   rows,
   totals,
 }: {
-  rows: CategoryBudgetRow[];
+  rows: BudgetCategoryNode[];
   totals: { budgeted: number; spent: number; remaining: number };
 }) {
   if (rows.length === 0) {
@@ -51,7 +51,7 @@ export function CategoryBudgetWidget({
                 {r.status === "over" && <AlertTriangle className="h-3.5 w-3.5 text-destructive" />}
               </span>
               <span className="text-muted-foreground">
-                {formatCurrency(r.spent)} / {formatCurrency(r.budgeted)}
+                {formatCurrency(r.spent)} / {formatCurrency(r.available)}
               </span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-secondary">

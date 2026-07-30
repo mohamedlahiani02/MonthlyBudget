@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Wallet, PiggyBank, TrendingDown } from "lucide-react";
+import { Loader2, Wallet, PiggyBank, TrendingDown, BarChart3 } from "lucide-react";
 import { budgetSchema, type BudgetInput } from "@/lib/validations";
 import { api } from "@/lib/client-api";
 import { formatCurrency, MONTH_NAMES, monthName } from "@/lib/utils";
@@ -95,9 +96,9 @@ export default function BudgetPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Budget</h1>
           <p className="text-sm text-muted-foreground">Set a monthly limit and saving goal.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
-            <SelectTrigger className="w-36">
+            <SelectTrigger className="w-32 flex-1 sm:w-36 sm:flex-none">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -109,7 +110,7 @@ export default function BudgetPage() {
             </SelectContent>
           </Select>
           <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
-            <SelectTrigger className="w-28">
+            <SelectTrigger className="w-24 sm:w-28">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -120,6 +121,12 @@ export default function BudgetPage() {
               ))}
             </SelectContent>
           </Select>
+          <Button asChild variant="outline" className="gap-2">
+            <Link href={`/budget/report?month=${month}&year=${year}`}>
+              <BarChart3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Report</span>
+            </Link>
+          </Button>
         </div>
       </div>
 

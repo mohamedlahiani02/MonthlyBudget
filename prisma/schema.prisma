@@ -103,10 +103,25 @@ model CategoryBudget {
   month      Int
   year       Int
   amount     Float
+  rollover   Boolean  @default(false)
   createdAt  DateTime @default(now())
 
   @@unique([categoryId, month, year])
   @@index([categoryId])
+}
+
+model SubcategoryBudget {
+  id            String      @id @default(cuid())
+  subcategoryId String
+  subcategory   Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+  month         Int
+  year          Int
+  amount        Float
+  rollover      Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+
+  @@unique([subcategoryId, month, year])
+  @@index([subcategoryId])
 }
 
 model Subcategory {
@@ -114,10 +129,11 @@ model Subcategory {
   name              String
   categoryId        String
   category          Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  position          Int                @default(0)
-  createdAt         DateTime           @default(now())
+  position          Int                 @default(0)
+  createdAt         DateTime            @default(now())
   expenses          Expense[]
   recurringExpenses RecurringExpense[]
+  budgets           SubcategoryBudget[]
 
   @@index([categoryId])
 }
