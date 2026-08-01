@@ -220,8 +220,24 @@ export async function getDashboardData(
     total: Number(total.toFixed(2)),
   }));
 
-  // 12-month rolling series for charts
+  // 12-month rolling series for charts. Align it with the carry-aware KPI so
+  // the chart and the "Monthly Income"/"Savings" cards agree (dashboard only —
+  // getMonthlySeries stays raw for the reports/yearly analytics path).
   const monthlySeries = await getMonthlySeries(year);
+  const carriedRows = await prisma.carryover.findMany({
+    where: { year },
+    select: { month: true },
+  });
+  const carriedSet = new Set(carriedRows.map((r) => r.month));
+  let chainCarryIn = await getCarryIn(year, 1); // carried in from December of the previous year
+  for (const p of monthlySeries) {
+    const mm = p.monthIndex + 1;
+    const leftover = p.income + chainCarryIn - p.expenses;
+    const cOut = carriedSet.has(mm) ? Math.max(0, leftover) : 0;
+    p.income = Number((p.income + chainCarryIn).toFixed(2));
+    p.savings = Number((p.income - p.expenses - cOut).toFixed(2));
+    chainCarryIn = cOut;
+  }
 
   return {
     today: { income: todayIncome, expenses: todayExpenses },

@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Budget, ExpenseWithCategory } from "@/types";
+import type { Budget, ExpenseWithCategory, CarryoverStatus } from "@/types";
 
 export default function BudgetPage() {
   const { toast } = useToast();
@@ -39,6 +39,7 @@ export default function BudgetPage() {
   const [year, setYear] = React.useState(now.getFullYear());
   const [spent, setSpent] = React.useState(0);
   const [income, setIncome] = React.useState(0);
+  const [carry, setCarry] = React.useState<CarryoverStatus | null>(null);
   const [loading, setLoading] = React.useState(true);
 
   const { register, handleSubmit, reset, watch, formState: { isSubmitting } } =
@@ -53,10 +54,11 @@ export default function BudgetPage() {
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
-      const [budget, expenses, incomes] = await Promise.all([
+      const [budget, expenses, incomes, carryStatus] = await Promise.all([
         api.get<Budget | null>(`/api/budget?month=${month}&year=${year}`),
         api.get<ExpenseWithCategory[]>(`/api/expenses?month=${month}&year=${year}`),
         api.get<{ amount: number }[]>(`/api/income?month=${month}&year=${year}`),
+        api.get<CarryoverStatus>(`/api/carryover?month=${month}&year=${year}`),
       ]);
       reset({
         month,
@@ -66,6 +68,7 @@ export default function BudgetPage() {
       });
       setSpent(expenses.reduce((s, e) => s + e.amount, 0));
       setIncome(incomes.reduce((s, i) => s + i.amount, 0));
+      setCarry(carryStatus);
     } finally {
       setLoading(false);
     }
@@ -87,7 +90,8 @@ export default function BudgetPage() {
 
   const remaining = monthlyBudget - spent;
   const utilization = monthlyBudget > 0 ? (spent / monthlyBudget) * 100 : 0;
-  const savings = income - spent;
+  // Carry-aware net so this matches the Carryover card and the dashboard.
+  const savings = carry ? carry.netAfter : income - spent;
   const years = Array.from({ length: 6 }, (_, i) => now.getFullYear() - i);
 
   return (

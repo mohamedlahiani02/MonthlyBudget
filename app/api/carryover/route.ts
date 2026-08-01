@@ -1,7 +1,10 @@
-import { ZodError } from "zod";
-import { Prisma } from "@prisma/client";
 import { carryoverSchema } from "@/lib/validations";
-import { getCarryoverStatus, carryForward, undoCarryForward } from "@/lib/carryover";
+import {
+  getCarryoverStatus,
+  carryForward,
+  undoCarryForward,
+  CarryoverError,
+} from "@/lib/carryover";
 import { ok, handleError } from "@/lib/api";
 
 export async function GET(req: Request) {
@@ -23,12 +26,9 @@ export async function POST(req: Request) {
       action === "carry" ? await carryForward(year, month) : await undoCarryForward(year, month);
     return ok(status);
   } catch (err) {
-    // Domain rule violations (e.g. already carried, saving goal ≠ 0) → 400.
-    if (
-      err instanceof Error &&
-      !(err instanceof ZodError) &&
-      !(err instanceof Prisma.PrismaClientKnownRequestError)
-    ) {
+    // Only our explicit domain-rule violations map to 400; everything else
+    // (DB/init/validation errors) goes through handleError as 500.
+    if (err instanceof CarryoverError) {
       return Response.json({ error: err.message }, { status: 400 });
     }
     return handleError(err);
