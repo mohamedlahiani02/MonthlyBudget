@@ -22,6 +22,7 @@ import {
 import { BudgetRing } from "@/components/dashboard/budget-ring";
 import { WeeklyCapSection } from "@/components/budget/weekly-cap-section";
 import { CategoryBudgetsSection } from "@/components/budget/category-budgets-section";
+import { CarryoverSection } from "@/components/budget/carryover-section";
 import {
   Select,
   SelectContent,
@@ -194,6 +195,8 @@ export default function BudgetPage() {
           </CardContent>
         </Card>
       </div>
+
+      <CarryoverSection month={month} year={year} onChanged={load} />
 
       <WeeklyCapSection />
 

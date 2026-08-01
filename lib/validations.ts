@@ -99,6 +99,13 @@ export const subcategoryBudgetSchema = z.object({
 });
 export type SubcategoryBudgetInput = z.infer<typeof subcategoryBudgetSchema>;
 
+export const carryoverSchema = z.object({
+  month: z.coerce.number().int().min(1).max(12),
+  year: z.coerce.number().int().min(2000).max(3000),
+  action: z.enum(["carry", "undo"]),
+});
+export type CarryoverInput = z.infer<typeof carryoverSchema>;
+
 export const copyBudgetSchema = z.object({
   fromMonth: z.coerce.number().int().min(1).max(12),
   fromYear: z.coerce.number().int().min(2000).max(3000),

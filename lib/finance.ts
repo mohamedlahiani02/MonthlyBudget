@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { dayRange, monthRange, yearRange, monthName } from "@/lib/utils";
 import { generateRecurringForMonth } from "@/lib/recurring";
+import { getCarryIn, getCarryOut } from "@/lib/carryover";
 
 /** Median of a numeric list (0 for empty). */
 function median(nums: number[]): number {
@@ -151,10 +152,18 @@ export async function getDashboardData(
     }),
   ]);
 
+  // Carryover: surplus received from the previous month counts as income here,
+  // and surplus sent to next month reduces this month's net ("recette").
+  const [carryIn, carryOut] = await Promise.all([
+    getCarryIn(year, month),
+    getCarryOut(year, month),
+  ]);
+
   const monthlyBudget = budget?.monthlyBudget ?? 0;
   const savingGoal = budget?.savingGoal ?? 0;
+  const displayIncome = monthIncome + carryIn;
   const remainingBudget = monthlyBudget - monthExpenses;
-  const savings = monthIncome - monthExpenses;
+  const savings = displayIncome - monthExpenses - carryOut;
   const utilization = monthlyBudget > 0 ? (monthExpenses / monthlyBudget) * 100 : 0;
 
   // Median daily *variable* spending (excludes fixed expenses; robust to
@@ -217,7 +226,7 @@ export async function getDashboardData(
   return {
     today: { income: todayIncome, expenses: todayExpenses },
     month: {
-      income: monthIncome,
+      income: displayIncome,
       expenses: monthExpenses,
       fixed: byType.fixed,
       variable: byType.variable,

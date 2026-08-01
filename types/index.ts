@@ -27,6 +27,7 @@ export type {
 };
 
 export type { WeeklyStatus } from "@/lib/weekly";
+export type { CarryoverStatus } from "@/lib/carryover";
 export type {
   BudgetComparison,
   BudgetCategoryNode,

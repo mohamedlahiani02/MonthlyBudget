@@ -165,6 +165,18 @@ model RecurringExpense {
   @@index([accountId])
 }
 
+// Surplus carried from a source month into the next (computed, not a ledger row).
+// One row per source month: `amount` left (month,year) and becomes income next month.
+model Carryover {
+  id        String   @id @default(cuid())
+  month     Int
+  year      Int
+  amount    Float
+  createdAt DateTime @default(now())
+
+  @@unique([month, year])
+}
+
 // Simple key/value store (used for the runtime password override).
 model Setting {
   key   String @id
