@@ -2,7 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { dayRange, monthRange, yearRange, monthName } from "@/lib/utils";
 import { generateRecurringForMonth } from "@/lib/recurring";
-import { getCarryIn, getCarryOut } from "@/lib/carryover";
+import { getCarryIn, isCarried, computeCarryOut } from "@/lib/carryover";
 
 /** Median of a numeric list (0 for empty). */
 function median(nums: number[]): number {
@@ -154,10 +154,12 @@ export async function getDashboardData(
 
   // Carryover: surplus received from the previous month counts as income here,
   // and surplus sent to next month reduces this month's net ("recette").
-  const [carryIn, carryOut] = await Promise.all([
+  // carryOut is derived from figures already fetched — no extra aggregate queries.
+  const [carryIn, carried] = await Promise.all([
     getCarryIn(year, month),
-    getCarryOut(year, month),
+    isCarried(year, month),
   ]);
+  const carryOut = computeCarryOut(carried, monthIncome, carryIn, monthExpenses);
 
   const monthlyBudget = budget?.monthlyBudget ?? 0;
   const savingGoal = budget?.savingGoal ?? 0;
@@ -231,9 +233,7 @@ export async function getDashboardData(
   const carriedSet = new Set(carriedRows.map((r) => r.month));
   let chainCarryIn = await getCarryIn(year, 1); // carried in from December of the previous year
   for (const p of monthlySeries) {
-    const mm = p.monthIndex + 1;
-    const leftover = p.income + chainCarryIn - p.expenses;
-    const cOut = carriedSet.has(mm) ? Math.max(0, leftover) : 0;
+    const cOut = computeCarryOut(carriedSet.has(p.monthIndex + 1), p.income, chainCarryIn, p.expenses);
     p.income = Number((p.income + chainCarryIn).toFixed(2));
     p.savings = Number((p.income - p.expenses - cOut).toFixed(2));
     chainCarryIn = cOut;

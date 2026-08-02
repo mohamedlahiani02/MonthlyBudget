@@ -25,15 +25,25 @@ async function sum(model: "income" | "expense", start: Date, end: Date): Promise
   return res._sum.amount ?? 0;
 }
 
-async function isCarried(year: number, month: number): Promise<boolean> {
+export async function isCarried(year: number, month: number): Promise<boolean> {
   const row = await prisma.carryover.findUnique({ where: { month_year: { month, year } } });
   return !!row;
 }
 
+/** The single carry rule: a carried month sends its full positive leftover on. */
+export function computeCarryOut(
+  carried: boolean,
+  income: number,
+  carryIn: number,
+  expenses: number
+): number {
+  if (!carried) return 0;
+  return Number(Math.max(0, income + carryIn - expenses).toFixed(2));
+}
+
 /**
  * Amount carried OUT of (year, month), computed dynamically so it always
- * tracks the month's current transactions: 0 unless the month is marked as
- * carried, otherwise the full positive leftover at read time.
+ * tracks the month's current transactions.
  */
 export async function getCarryOut(year: number, month: number): Promise<number> {
   if (!(await isCarried(year, month))) return 0;
@@ -43,8 +53,7 @@ export async function getCarryOut(year: number, month: number): Promise<number> 
     sum("expense", start, end),
     getCarryIn(year, month),
   ]);
-  const leftover = income + carryIn - expenses;
-  return Number(Math.max(0, leftover).toFixed(2));
+  return computeCarryOut(true, income, carryIn, expenses);
 }
 
 /** Amount carried INTO (year, month) as "income from previous month". */
@@ -80,7 +89,7 @@ export async function getCarryoverStatus(year: number, month: number): Promise<C
 
   const savingGoal = budget?.savingGoal ?? 0;
   const leftover = Number((income + carryIn - expenses).toFixed(2));
-  const carryOut = carried ? Number(Math.max(0, leftover).toFixed(2)) : 0;
+  const carryOut = computeCarryOut(carried, income, carryIn, expenses);
   const netAfter = Number((leftover - carryOut).toFixed(2));
   const n = nextMonth(year, month);
 
