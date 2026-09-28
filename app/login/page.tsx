@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { Lock, Loader2, Wallet } from "lucide-react";
 import { loginSchema, type LoginInput } from "@/lib/validations";
 import { api } from "@/lib/client-api";
+import { safeNextPath } from "@/lib/safe-redirect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,7 +27,13 @@ export default function LoginPage() {
     try {
       await api.post("/api/auth/login", values);
       toast({ title: "Welcome back", variant: "success" });
-      router.replace("/");
+      const target =
+        safeNextPath(new URLSearchParams(window.location.search).get("next")) ?? "/";
+      if (target.startsWith("/oauth/")) {
+        window.location.assign(target);
+        return;
+      }
+      router.replace(target);
       router.refresh();
     } catch (err) {
       toast({
