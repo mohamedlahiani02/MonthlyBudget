@@ -98,6 +98,77 @@ Open http://localhost:3000, then unlock with your `APP_PASSWORD`.
 
 That's it — the app runs entirely on Vercel's free tier.
 
+## MCP server (Claude.ai custom connector)
+
+The app exposes a [Model Context Protocol](https://modelcontextprotocol.io) server at `/api/mcp`
+(Streamable HTTP, stateless, JSON responses) protected by OAuth 2.1 authorization code + PKCE (S256).
+Signing in reuses the existing password session: the consent screen at `/oauth/authorize` is only
+reachable with a valid `mb_session` cookie.
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /api/mcp` | MCP JSON-RPC endpoint (Bearer token required) |
+| `GET /.well-known/oauth-protected-resource[/api/mcp]` | RFC 9728 protected resource metadata |
+| `GET /.well-known/oauth-authorization-server` | RFC 8414 authorization server metadata |
+| `POST /oauth/register` | RFC 7591 dynamic client registration (redirect URIs must be allowlisted) |
+| `GET /oauth/authorize` | Consent screen (requires app login) |
+| `POST /oauth/token` | `authorization_code` and `refresh_token` grants |
+
+Tools: `get_monthly_summary`, `list_transactions`, `add_expense`, `add_income`, `get_categories`,
+`list_accounts`, `get_budget_status`. Each declares an input and output schema.
+
+OAuth state is stateless (HMAC-signed with `MCP_TOKEN_SECRET`); no database tables are added.
+Access tokens last 1 hour, refresh tokens 30 days. Rotating `MCP_TOKEN_SECRET` revokes all of them.
+Limitation: because nothing is stored, authorization codes cannot be enforced as single-use
+(mitigated by a 60 second lifetime and PKCE) and refresh-token reuse cannot be detected.
+
+### Configuration
+
+Set `MCP_PUBLIC_BASE_URL`, `MCP_TOKEN_SECRET` and optionally `MCP_ALLOWED_REDIRECT_URIS` and
+`LOG_LEVEL` (see `.env.example`). Without the first two, the MCP and OAuth endpoints respond `503`
+and log `mcp.config_error`; the rest of the app is unaffected.
+
+### Testing locally
+
+1. Add to `.env`:
+
+   ```env
+   MCP_PUBLIC_BASE_URL="http://localhost:3000"
+   MCP_TOKEN_SECRET="<output of: node -e \"console.log(require('crypto').randomBytes(48).toString('hex'))\">"
+   MCP_ALLOWED_REDIRECT_URIS="https://claude.ai/api/mcp/auth_callback,http://localhost:6274/oauth/callback"
+   ```
+
+2. `npm run dev`, then check discovery and the auth challenge:
+
+   ```bash
+   curl -s localhost:3000/.well-known/oauth-authorization-server | jq
+   curl -s localhost:3000/.well-known/oauth-protected-resource/api/mcp | jq
+   curl -si -X POST localhost:3000/api/mcp -H 'content-type: application/json' -d '{}' | grep -i www-authenticate
+   ```
+
+   The last command must return `401` with a `WWW-Authenticate: Bearer resource_metadata="..."` header.
+
+3. Run the MCP Inspector and walk through the full OAuth flow:
+
+   ```bash
+   npx @modelcontextprotocol/inspector
+   ```
+
+   In the Inspector UI choose transport **Streamable HTTP**, URL `http://localhost:3000/api/mcp`, and
+   click **Connect** (or **Open Auth Settings > Quick OAuth Flow**). You are sent to the app's login
+   page, then to the consent screen; after **Approve**, the Inspector lists the tools and you can call them.
+
+4. Watch the server output: every auth step and tool call is a JSON log line with an `event` field
+   (`mcp.auth`, `mcp.tool_call`, `oauth.register`, `oauth.authorize`, `oauth.token`, `oauth.discovery`).
+   Tokens and codes are never logged.
+
+### Connecting from Claude.ai
+
+After deploying with `MCP_PUBLIC_BASE_URL="https://mlmonthlybudget.me"`, open Claude.ai
+Settings > Connectors > Add custom connector and enter `https://mlmonthlybudget.me/api/mcp`.
+Leave the OAuth client ID/secret fields empty; Claude registers itself dynamically. If the connection
+fails, filter the Vercel runtime logs by `event` to see which step was rejected and why.
+
 ## 🗂️ Project Structure
 
 ```
