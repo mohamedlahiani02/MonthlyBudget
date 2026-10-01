@@ -17,12 +17,14 @@ class ParserError(Exception):
 
 
 def _text(node: Tag, selector: str) -> str:
+    if not selector:
+        return ""
     found = node.select_one(selector)
     return " ".join(found.get_text(" ", strip=True).split()) if found else ""
 
 
 def _attr(node: Tag, spec: dict[str, str] | None, base_url: str) -> str:
-    if not spec:
+    if not spec or not spec.get("selector"):
         return ""
     found = node.select_one(spec["selector"])
     if found is None:

@@ -13,16 +13,16 @@ catalogue:
 
 # CSS selectors, to be validated against the real catalogue HTML.
 parser:
-  card: "div.company-card"
-  name: ".company-name"
-  sector: ".company-sector"
-  description: ".company-description"
-  city: ".company-city"
+  card: "div.post-item"
+  name: "h3.title a"
+  sector: ""
+  description: ""
+  city: ""
   website:
-    selector: "a.company-website"
+    selector: ""
     attribute: "href"
   detail_url:
-    selector: "a.company-link"
+    selector: "a.post-see-btn"
     attribute: "href"
   extra_fields: {}
 
