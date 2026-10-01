@@ -26,6 +26,20 @@ parser:
     attribute: "href"
   extra_fields: {}
 
+crawl:
+  max_pages: 60
+  next_page_selector: "a.next.page-numbers"
+  raw_dir: "data/raw"
+  sample_count: 5
+  # Selectors for company detail pages: to be completed after inspecting sampled raw pages.
+  detail:
+    sector: ""
+    city: ""
+    description: ""
+    website:
+      selector: ""
+      attribute: "href"
+
 enrichment:
   max_description_chars: 400
   careers_keywords: ["carriere", "carrieres", "career", "careers", "recrutement", "recruitment", "jobs", "emploi", "rejoignez", "join-us", "work-with-us"]
