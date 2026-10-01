@@ -8,6 +8,7 @@ from datetime import date
 from pathlib import Path
 
 from .config import ConfigError, load_config
+from .crawl import crawl_details, crawl_listing
 from .enrich import enrich_company
 from .http import PoliteClient
 from .models import Company, Enrichment
@@ -17,19 +18,11 @@ from .parser import ParserError, check_count, parse_catalogue
 logger = logging.getLogger("prospection")
 
 
-def _fetch_catalogue(client: PoliteClient, url: str, target: Path) -> None:
-    """Single page download, only when robots.txt allows it."""
-    response = client.get(url)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(response.text, encoding="utf-8")
-    logger.info("Catalogue saved to %s", target)
-
-
 def main(argv: list[str] | None = None) -> int:
     args_parser = argparse.ArgumentParser(description="Forum prospection pipeline")
     args_parser.add_argument("--config", type=Path, default=Path("config/config.yaml"))
-    args_parser.add_argument("--fetch-catalogue", action="store_true",
-                             help="Download the catalogue page once if input HTML is absent")
+    args_parser.add_argument("--crawl", action="store_true",
+                             help="Crawl all listing pages and detail pages (robots.txt respected)")
     args_parser.add_argument("--no-enrich", action="store_true", help="Skip website enrichment")
     args_parser.add_argument("--limit", type=int, default=0, help="Process only the first N companies")
     args_parser.add_argument("--verbose", action="store_true")
@@ -43,24 +36,22 @@ def main(argv: list[str] | None = None) -> int:
         logger.error("%s", exc)
         return 2
 
-    html_path = Path(cfg["catalogue"]["local_html"])
     client = PoliteClient(cfg["http"])
-    if not html_path.exists():
-        if not args.fetch_catalogue:
-            logger.error("%s not found; rerun with --fetch-catalogue", html_path)
-            return 2
-        try:
-            _fetch_catalogue(client, cfg["catalogue"]["url"], html_path)
-        except Exception as exc:  # noqa: BLE001 - any failure here is fatal and reported
-            logger.error("Catalogue download failed: %s", exc)
-            return 3
-
+    raw_dir = Path(cfg["crawl"]["raw_dir"])
+    detail_status: dict[str, str] = {}
     try:
-        companies = parse_catalogue(html_path.read_text(encoding="utf-8"),
-                                    cfg["parser"], cfg["catalogue"]["url"])
+        if args.crawl:
+            companies = crawl_listing(client, cfg, raw_dir / "listing")
+        else:
+            html_path = Path(cfg["catalogue"]["local_html"])
+            companies = parse_catalogue(html_path.read_text(encoding="utf-8"),
+                                        cfg["parser"], cfg["catalogue"]["url"])
     except (ParserError, OSError) as exc:
-        logger.error("Parsing failed: %s", exc)
+        logger.error("Catalogue loading failed: %s", exc)
         return 4
+    except Exception as exc:  # noqa: BLE001 - network or robots failure is fatal here
+        logger.error("Catalogue crawl failed: %s", exc)
+        return 3
 
     expected = cfg["catalogue"]["expected_count"]
     warning = check_count(len(companies), expected, cfg["catalogue"]["count_tolerance"])
@@ -69,9 +60,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.limit:
         companies = companies[: args.limit]
 
+    if args.crawl:
+        detail_status = crawl_details(client, companies, cfg, raw_dir / "details")
+
     rows: list[tuple[Company, Enrichment]] = []
     for position, company in enumerate(companies, start=1):
         enrichment = Enrichment() if args.no_enrich else enrich_company(company, client, cfg["enrichment"])
+        if detail_status.get(company.source_url, "ok") != "ok":
+            enrichment.status = detail_status[company.source_url]
         rows.append((company, enrichment))
         logger.info("%d/%d %s -> %s", position, len(companies), company.nom, enrichment.status)
 
