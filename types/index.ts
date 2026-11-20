@@ -57,6 +57,7 @@ export type AccountWithBalanceDTO = Account & {
   expenseTotal: number;
   transferIn: number;
   transferOut: number;
+  balanceFrom: string | null;
 };
 
 export type TransferWithAccounts = Transfer & {

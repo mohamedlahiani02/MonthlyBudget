@@ -138,3 +138,12 @@ export const PAYMENT_METHODS = [
   "Cheque",
   "Other",
 ] as const;
+
+const monthKey = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Expected YYYY-MM");
+
+export const freshStartSchema = z.object({
+  month: monthKey,
+  balances: z.record(z.string().min(1), z.coerce.number().finite()),
+  untracked: z.array(monthKey).max(24).default([]),
+});
+export type FreshStartInput = z.infer<typeof freshStartSchema>;
