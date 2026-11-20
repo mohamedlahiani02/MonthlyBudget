@@ -52,6 +52,13 @@ export default async function ReportsPage({
         <YearSelect year={year} />
       </div>
 
+      {breakdown.estimatedMonths.length > 0 && (
+        <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">
+          Estimated from your previous 3 tracked months (not tracked):{" "}
+          {yearly.series.filter((p) => p.estimated).map((p) => p.month).join(", ")}
+        </p>
+      )}
+
       {/* Yearly KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Annual Income" value={yearly.annualIncome} icon={<TrendingUp />} accent="primary" index={0} />

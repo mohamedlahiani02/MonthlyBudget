@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, ArrowLeftRight, Pencil, Trash2, Eye, Star, Landmark, Wallet } from "lucide-react";
+import { Plus, ArrowLeftRight, CalendarPlus, Pencil, Trash2, Eye, Star, Landmark, Wallet } from "lucide-react";
 import { api } from "@/lib/client-api";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +20,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { AccountForm } from "@/components/accounts/account-form";
 import { TransferForm } from "@/components/accounts/transfer-form";
+import { FreshStartDialog } from "@/components/accounts/fresh-start-dialog";
 import type { Account, AccountWithBalanceDTO } from "@/types";
 
 interface AccountDetail {
@@ -40,6 +41,7 @@ export default function AccountsPage() {
   const [formOpen, setFormOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Account | null>(null);
   const [transferOpen, setTransferOpen] = React.useState(false);
+  const [freshOpen, setFreshOpen] = React.useState(false);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [detail, setDetail] = React.useState<AccountDetail | null>(null);
 
@@ -95,7 +97,10 @@ export default function AccountsPage() {
             Manage your cash & bank accounts and move money between them.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setFreshOpen(true)} className="gap-2">
+            <CalendarPlus className="h-4 w-4" /> Start month fresh
+          </Button>
           <Button variant="outline" onClick={() => setTransferOpen(true)} className="gap-2">
             <ArrowLeftRight className="h-4 w-4" /> Transfer
           </Button>
@@ -110,6 +115,8 @@ export default function AccountsPage() {
           </Button>
         </div>
       </div>
+
+      <FreshStartDialog open={freshOpen} onOpenChange={setFreshOpen} accounts={accounts} onChanged={load} />
 
       {/* Net worth */}
       <Card className="p-5">
