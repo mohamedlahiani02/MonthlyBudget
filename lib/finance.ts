@@ -3,6 +3,15 @@ import { prisma } from "@/lib/prisma";
 import { dayRange, monthRange, yearRange, monthName } from "@/lib/utils";
 import { generateRecurringForMonth } from "@/lib/recurring";
 import { getCarryIn, isCarried, computeCarryOut } from "@/lib/carryover";
+import {
+  ESTIMATE_LOOKBACK_MONTHS,
+  dateToMonthKey,
+  estimateUntracked,
+  getUntrackedMonths,
+  monthStart,
+  toMonthKey,
+  type MonthKey,
+} from "@/lib/fresh-start";
 
 /** Median of a numeric list (0 for empty). */
 function median(nums: number[]): number {
@@ -51,6 +60,8 @@ export interface MonthlyPoint {
   income: number;
   expenses: number;
   savings: number;
+  /** True when the month was marked untracked and values are estimated. */
+  estimated?: boolean;
 }
 
 async function sumExpenses(start: Date, end: Date): Promise<number> {
@@ -280,9 +291,23 @@ export async function getDashboardData(
   };
 }
 
+/** Year months plus enough history before it to estimate untracked months. */
+function analyticsWindow(year: number): { start: Date; end: Date; months: MonthKey[] } {
+  const months = Array.from({ length: 12 }, (_, i) => toMonthKey(year, i + 1));
+  const start = monthStart(toMonthKey(year, 1));
+  start.setMonth(start.getMonth() - ESTIMATE_LOOKBACK_MONTHS);
+  return { start, end: yearRange(year).end, months };
+}
+
+function addTo(buckets: Map<MonthKey, Record<string, number>>, key: MonthKey, field: string, amount: number) {
+  const bucket = buckets.get(key) ?? {};
+  bucket[field] = (bucket[field] ?? 0) + amount;
+  buckets.set(key, bucket);
+}
+
 export async function getMonthlySeries(year: number): Promise<MonthlyPoint[]> {
-  const { start, end } = yearRange(year);
-  const [expenses, incomes] = await Promise.all([
+  const { start, end, months } = analyticsWindow(year);
+  const [expenses, incomes, untracked] = await Promise.all([
     prisma.expense.findMany({
       where: { date: { gte: start, lt: end } },
       select: { amount: true, date: true },
@@ -291,22 +316,27 @@ export async function getMonthlySeries(year: number): Promise<MonthlyPoint[]> {
       where: { date: { gte: start, lt: end } },
       select: { amount: true, date: true },
     }),
+    getUntrackedMonths(),
   ]);
-  const points: MonthlyPoint[] = Array.from({ length: 12 }, (_, i) => ({
-    month: monthName(i + 1).slice(0, 3),
-    monthIndex: i,
-    income: 0,
-    expenses: 0,
-    savings: 0,
-  }));
-  for (const e of expenses) points[e.date.getMonth()].expenses += e.amount;
-  for (const i of incomes) points[i.date.getMonth()].income += i.amount;
-  for (const p of points) {
-    p.expenses = Number(p.expenses.toFixed(2));
-    p.income = Number(p.income.toFixed(2));
-    p.savings = Number((p.income - p.expenses).toFixed(2));
-  }
-  return points;
+  const buckets = new Map<MonthKey, Record<string, number>>();
+  for (const e of expenses) addTo(buckets, dateToMonthKey(e.date), "expenses", e.amount);
+  for (const i of incomes) addTo(buckets, dateToMonthKey(i.date), "income", i.amount);
+  const estimates = estimateUntracked(buckets, months, untracked);
+
+  return months.map((key, i) => {
+    const estimate = estimates.get(key);
+    const values = estimate ?? buckets.get(key) ?? {};
+    const income = Number((values.income ?? 0).toFixed(2));
+    const expensesTotal = Number((values.expenses ?? 0).toFixed(2));
+    return {
+      month: monthName(i + 1).slice(0, 3),
+      monthIndex: i,
+      income,
+      expenses: expensesTotal,
+      savings: Number((income - expensesTotal).toFixed(2)),
+      ...(estimate ? { estimated: true } : {}),
+    };
+  });
 }
 
 export interface YearlyData {
@@ -322,22 +352,37 @@ export interface YearlyData {
 }
 
 export async function getYearBreakdown(year: number) {
-  const { start, end } = yearRange(year);
-  const expenses = await prisma.expense.findMany({
-    where: { date: { gte: start, lt: end } },
-    select: {
-      amount: true,
-      subcategory: { select: { category: { select: { name: true, type: true } } } },
-    },
-  });
+  const { start, end, months } = analyticsWindow(year);
+  const [expenses, untracked] = await Promise.all([
+    prisma.expense.findMany({
+      where: { date: { gte: start, lt: end } },
+      select: {
+        amount: true,
+        date: true,
+        subcategory: { select: { category: { select: { name: true, type: true } } } },
+      },
+    }),
+    getUntrackedMonths(),
+  ]);
+  const buckets = new Map<MonthKey, Record<string, number>>();
+  const typeByCategory = new Map<string, string>();
+  for (const e of expenses) {
+    const cat = e.subcategory.category;
+    typeByCategory.set(cat.name, cat.type);
+    addTo(buckets, dateToMonthKey(e.date), cat.name, e.amount);
+  }
+  const estimates = estimateUntracked(buckets, months, untracked);
+
   const catMap = new Map<string, number>();
   let fixed = 0;
   let variable = 0;
-  for (const e of expenses) {
-    const cat = e.subcategory.category;
-    catMap.set(cat.name, (catMap.get(cat.name) ?? 0) + e.amount);
-    if (cat.type === "Fixed") fixed += e.amount;
-    else variable += e.amount;
+  for (const key of months) {
+    const values = estimates.get(key) ?? buckets.get(key) ?? {};
+    for (const [name, amount] of Object.entries(values)) {
+      catMap.set(name, (catMap.get(name) ?? 0) + amount);
+      if (typeByCategory.get(name) === "Fixed") fixed += amount;
+      else variable += amount;
+    }
   }
   const categoryBreakdown = [...catMap.entries()]
     .map(([name, value]) => ({ name, value: Number(value.toFixed(2)) }))
@@ -348,6 +393,7 @@ export async function getYearBreakdown(year: number) {
       { name: "Fixed", value: Number(fixed.toFixed(2)) },
       { name: "Variable", value: Number(variable.toFixed(2)) },
     ],
+    estimatedMonths: months.filter((key) => estimates.has(key)),
   };
 }
 
@@ -362,7 +408,7 @@ export async function getYearlyData(year: number): Promise<YearlyData> {
 
   let bestSavingMonth: { month: string; value: number } | null = null;
   let worstSpendingMonth: { month: string; value: number } | null = null;
-  for (const p of series) {
+  for (const p of activeMonths) {
     if (bestSavingMonth === null || p.savings > bestSavingMonth.value) {
       bestSavingMonth = { month: p.month, value: p.savings };
     }
