@@ -1,10 +1,17 @@
-# 💰 Personal Finance Dashboard
+# Personal Finance Dashboard
+
+## At a glance
+
+Single-user personal finance application with a dark, glassmorphism interface, built to run entirely on free tiers (Vercel and Neon Postgres).
+
+- **Stack:** Next.js 15 (App Router), TypeScript, Prisma, PostgreSQL, TailwindCSS, shadcn/ui, Recharts, Zod.
+- **Engineering:** signed HTTP-only cookie sessions without external auth, lazily generated recurring expenses (no cron), CSV and JSON import and export, and an MCP server secured with OAuth 2.1 and PKCE so AI assistants can query and update the budget with structured tool schemas.
 
 A modern, single-user personal finance dashboard — daily expenses, income, monthly budgeting, fully custom fixed/variable categories with unlimited subcategories, recurring expenses, and rich analytics. Built to deploy for **free on Vercel**.
 
 Dark-mode, glassmorphism UI inspired by Vercel, Linear, Notion and Stripe.
 
-## ✨ Features
+## Features
 
 - **Single-password auth** — signed HTTP-only cookie session (no JWT, no OAuth, no external auth).
 - **Dashboard** — animated KPI counters, budget progress ring, spending heatmap, top categories, recent transactions and charts.
@@ -16,7 +23,7 @@ Dark-mode, glassmorphism UI inspired by Vercel, Linear, Notion and Stripe.
 - **Settings** — change password, export CSV, export full database (JSON), import CSV, toggle dark mode.
 - **Productivity** — Command palette (`⌘/Ctrl+K`), Quick Add expense (`N`), keyboard shortcuts, toasts, confirmation dialogs, loading skeletons, empty states, error boundaries, mobile-first responsive design.
 
-## 🧱 Tech Stack
+## Tech Stack
 
 Next.js 15 (App Router) · TypeScript · TailwindCSS · shadcn/ui · Lucide · Recharts · React Hook Form · Zod · Framer Motion · Prisma ORM · **Neon Postgres** (free tier) · @dnd-kit.
 
@@ -24,7 +31,7 @@ Next.js 15 (App Router) · TypeScript · TailwindCSS · shadcn/ui · Lucide · R
 
 The original spec called for SQLite, but Vercel's serverless filesystem is **ephemeral/read-only at runtime** — SQLite writes would be lost on every redeploy/cold start. To keep the app **completely free and persistent**, it uses [Neon](https://neon.tech) serverless Postgres (generous free tier). The code is unchanged Prisma; only the datasource `provider` and connection string differ.
 
-## 🚀 Getting Started
+## Getting Started
 
 ### 1. Prerequisites
 
@@ -67,7 +74,7 @@ npm run dev
 
 Open http://localhost:3000, then unlock with your `APP_PASSWORD`.
 
-## 📜 Scripts
+## Scripts
 
 | Script            | Description                          |
 | ----------------- | ------------------------------------ |
@@ -78,7 +85,7 @@ Open http://localhost:3000, then unlock with your `APP_PASSWORD`.
 | `npm run db:push` | Push the Prisma schema to the DB     |
 | `npm run db:studio` | Open Prisma Studio                 |
 
-## ☁️ Deploy to Vercel (free)
+## Deploy to Vercel (free)
 
 1. Push this repo to GitHub.
 2. Create a free Neon Postgres database and copy its connection string.
@@ -98,7 +105,7 @@ Open http://localhost:3000, then unlock with your `APP_PASSWORD`.
 
 That's it — the app runs entirely on Vercel's free tier.
 
-## MCP server (Claude.ai custom connector)
+## MCP server (AI assistant connector)
 
 The app exposes a [Model Context Protocol](https://modelcontextprotocol.io) server at `/api/mcp`
 (Streamable HTTP, stateless, JSON responses) protected by OAuth 2.1 authorization code + PKCE (S256).
@@ -135,7 +142,7 @@ and log `mcp.config_error`; the rest of the app is unaffected.
    ```env
    MCP_PUBLIC_BASE_URL="http://localhost:3000"
    MCP_TOKEN_SECRET="<output of: node -e \"console.log(require('crypto').randomBytes(48).toString('hex'))\">"
-   MCP_ALLOWED_REDIRECT_URIS="https://claude.ai/api/mcp/auth_callback,http://localhost:6274/oauth/callback"
+   MCP_ALLOWED_REDIRECT_URIS="<client callback URI>,http://localhost:6274/oauth/callback"
    ```
 
 2. `npm run dev`, then check discovery and the auth challenge:
@@ -162,14 +169,14 @@ and log `mcp.config_error`; the rest of the app is unaffected.
    (`mcp.auth`, `mcp.tool_call`, `oauth.register`, `oauth.authorize`, `oauth.token`, `oauth.discovery`).
    Tokens and codes are never logged.
 
-### Connecting from Claude.ai
+### Connecting an MCP client
 
-After deploying with `MCP_PUBLIC_BASE_URL="https://mlmonthlybudget.me"`, open Claude.ai
-Settings > Connectors > Add custom connector and enter `https://mlmonthlybudget.me/api/mcp`.
-Leave the OAuth client ID/secret fields empty; Claude registers itself dynamically. If the connection
+After deploying with `MCP_PUBLIC_BASE_URL="https://mlmonthlybudget.me"`, add a custom connector in any MCP-compatible
+assistant and enter `https://mlmonthlybudget.me/api/mcp`.
+Leave the OAuth client ID/secret fields empty; the client registers itself dynamically. If the connection
 fails, filter the Vercel runtime logs by `event` to see which step was rejected and why.
 
-## 🗂️ Project Structure
+## Project Structure
 
 ```
 app/
@@ -186,6 +193,6 @@ types/                 shared types
 middleware.ts          route protection
 ```
 
-## 🔐 Notes on password change
+## Notes on password change
 
 Vercel environment variables are read-only at runtime, so "change password" stores an override in a small `Setting` table (falling back to `APP_PASSWORD` when unset). This keeps the change persistent without a redeploy.
